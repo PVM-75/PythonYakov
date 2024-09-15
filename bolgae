@@ -1,0 +1,278 @@
+import tkinter as tk
+import random
+
+class BallGame:
+    def __init__(self, master):
+        self.master = master
+        self.master.title("Ball Game")
+
+        self.canvas = tk.Canvas(master, width=400, height=600, bg="black")
+        self.canvas.pack()
+
+        self.start_button = tk.Button(master, text="Start", command=self.start_game)
+        self.start_button.pack()
+
+        self.buy_button = tk.Button(master, text="Купить мяч (5 очков)", command=self.buy_ball)
+        self.buy_button.pack()
+        self.buy_button.config(state=tk.DISABLED)
+
+        self.upgrade_button = tk.Button(master, text="+1 к платформе (10 очков)", command=self.upgrade_paddle)
+        self.upgrade_button.pack()
+        self.upgrade_button.config(state=tk.DISABLED)
+
+        self.skin_button = tk.Button(master, text="Скины", command=self.open_skin_menu)
+        self.skin_button.pack()
+        self.skin_button.config(state=tk.DISABLED)
+
+        self.balls = []
+        self.ball_speeds = []
+        self.boxes = []
+        self.game_over_flag = False
+        self.score = 0
+        self.max_balls = 100
+
+        self.score_text = None
+        self.ball_count_text = None
+        self.touch_score_text = None
+        self.notification_label = tk.Label(master, text="", fg="red")
+        self.notification_label.pack()
+
+        self.paddle_width = 100
+        self.paddle_height = 5.9
+        self.points_per_touch = 1
+
+        self.paddle = self.canvas.create_rectangle(150, 580, 150 + self.paddle_width, 580 + self.paddle_height, fill="blue")
+
+        self.canvas.bind("<Motion>", self.move_paddle)
+
+        self.current_skin_color = "red"
+        self.skin_prices = {
+            "Огненный": 50,
+            "Снежный": 100,
+            "Звёздный": 150,
+            "Неоновый": 300
+        }
+
+        self.skin_effects = {
+            "Обычный": {"score_bonus": 0, "speed_bonus": 0, "special_effect": None},
+            "Огненный": {"score_bonus": 2, "speed_bonus": 1, "special_effect": "fire"},
+            "Снежный": {"score_bonus": 0, "speed_bonus": 0, "special_effect": "slow_time"},
+            "Звёздный": {"score_bonus": 0, "speed_bonus": 0, "special_effect": "random_bonus"},
+            "Неоновый": {"score_bonus": 2, "speed_bonus": 0, "special_effect": "stun"}
+        }
+        self.current_skin = "Обычный"
+
+    def start_game(self):
+        self.reset_game()
+        self.create_objects()
+        self.display_score()
+        self.buy_button.config(state=tk.NORMAL)
+        self.skin_button.config(state=tk.NORMAL)
+        self.update()
+
+    def reset_game(self):
+        self.score = 0
+        self.game_over_flag = False
+        self.balls.clear()
+        self.ball_speeds.clear()
+        self.boxes.clear()
+        self.canvas.delete("all")
+        self.paddle = self.canvas.create_rectangle(150, 580, 150 + self.paddle_width, 580 + self.paddle_height, fill="blue")
+
+        self.score_text = self.canvas.create_text(380, 30, text=f"Score: {self.score}", fill="white", font=("Arial", 16), anchor='e')
+        self.ball_count_text = self.canvas.create_text(380, 60, text=f"Balls: {len(self.balls)}", fill="white", font=("Arial", 16), anchor='e')
+        self.touch_score_text = self.canvas.create_text(380, 90, text=f"Score per touch: {self.points_per_touch}", fill="white", font=("Arial", 16), anchor='e')
+
+        self.notification_label.config(text="")
+
+    def create_objects(self):
+        self.add_ball()
+        self.spawn_box()
+
+    def add_ball(self):
+        if len(self.balls) < self.max_balls:
+            ball = self.canvas.create_oval(190, 290, 210, 310, fill=self.current_skin_color)
+            speed_x = random.choice([-3, 3])
+            speed_y = random.choice([-3, -2])
+            self.balls.append(ball)
+            self.ball_speeds.append((speed_x, speed_y))
+
+    def spawn_box(self):
+        if random.random() < 0.001:  # Вероятность появления 0,001
+            box_width = 30
+            box_height = 30
+            box_x = random.randint(50, 350 - box_width)
+            box_y = random.randint(50, 400 - box_height)
+            box = self.canvas.create_rectangle(box_x, box_y, box_x + box_width, box_y + box_height, fill="yellow")
+            self.boxes.append(box)
+
+    def buy_ball(self):
+        if self.score >= 5 and len(self.balls) < self.max_balls:
+            self.score -= 5
+            self.add_ball()
+            self.display_score()
+
+        if self.score < 5 or len(self.balls) >= self.max_balls:
+            self.buy_button.config(state=tk.DISABLED)
+        else:
+            self.buy_button.config(state=tk.NORMAL)
+
+    def upgrade_paddle(self):
+        if self.score >= 10:
+            self.score -= 10
+            self.points_per_touch += 1
+            self.display_score()
+
+    def move_paddle(self, event):
+        paddle_pos = self.canvas.coords(self.paddle)
+        new_x = event.x - self.paddle_width / 2
+        if new_x < 0:
+            new_x = 0
+        elif new_x + self.paddle_width > 400:
+            new_x = 400 - self.paddle_width
+        self.canvas.coords(self.paddle, new_x, paddle_pos[1], new_x + self.paddle_width, paddle_pos[1] + self.paddle_height)
+
+    def update(self):
+        if not self.game_over_flag:
+            self.move_balls()
+            self.check_for_box_collision()
+            self.spawn_box()
+            self.master.after(20, self.update)
+
+    def move_balls(self):
+        for index, ball in enumerate(self.balls):
+            speed_x, speed_y = self.ball_speeds[index]
+            self.canvas.move(ball, speed_x, speed_y)
+            ball_pos = self.canvas.coords(ball)
+
+            if ball_pos[0] <= 0 or ball_pos[2] >= 400:
+                self.ball_speeds[index] = (-speed_x, speed_y)
+            if ball_pos[1] <= 0:
+                self.ball_speeds[index] = (speed_x, -speed_y)
+
+            if self.check_collision_with_paddle(ball_pos):
+                self.ball_speeds[index] = (speed_x, -speed_y)
+                self.score += self.points_per_touch + self.skin_effects[self.current_skin]["score_bonus"]
+
+                # Генерация бонуса
+                bonus_type = random.random()
+                if self.skin_effects[self.current_skin]["special_effect"] == "fire":
+                    self.score += 2  # Дополнительный бонус от огненного скина
+                elif self.skin_effects[self.current_skin]["special_effect"] == "slow_time":
+                    # Замедление шариков (можно реализовать задержкой их движения)
+                    speed_x *= 0.7
+                    speed_y *= 0.7
+                elif self.skin_effects[self.current_skin]["special_effect"] == "random_bonus":
+                    random_bonus = random.choice([5, 10, 15])
+                    self.score += random_bonus
+                elif self.skin_effects[self.current_skin]["special_effect"] == "stun":
+                    # Добавим стекло оглушение
+                    self.canvas.itemconfig(ball, fill="cyan")
+
+                self.display_score()
+
+            if ball_pos[3] >= 600:
+                if len(self.balls) > 1:
+                    self.canvas.delete(ball)
+                    del self.balls[index]
+                    del self.ball_speeds[index]
+                else:
+                    self.game_over()
+
+    def check_collision_with_paddle(self, ball_pos):
+        paddle_pos = self.canvas.coords(self.paddle)
+        return (ball_pos[2] >= paddle_pos[0] and ball_pos[0] <= paddle_pos[2] and
+                ball_pos[3] >= paddle_pos[1] and ball_pos[3] <= paddle_pos[3])
+
+    def check_for_box_collision(self):
+        for ball in self.balls:
+            ball_pos = self.canvas.coords(ball)
+            for box in self.boxes:
+                box_pos = self.canvas.coords(box)
+                if (ball_pos[2] >= box_pos[0] and ball_pos[0] <= box_pos[2] and
+                        ball_pos[3] >= box_pos[1] and ball_pos[1] <= box_pos[3]):
+                    self.canvas.delete(box)
+                    self.boxes.remove(box)
+
+    def display_score(self):
+        self.canvas.itemconfig(self.score_text, text=f"Score: {self.score}")
+        self.canvas.itemconfig(self.ball_count_text, text=f"Balls: {len(self.balls)}")
+        self.canvas.itemconfig(self.touch_score_text, text=f"Score per touch: {self.points_per_touch}")
+
+        if self.score < 5 or len(self.balls) >= self.max_balls:
+            self.buy_button.config(state=tk.DISABLED)
+        else:
+            self.buy_button.config(state=tk.NORMAL)
+
+        if self.score < 10:
+            self.upgrade_button.config(state=tk.DISABLED)
+        else:
+            self.upgrade_button.config(state=tk.NORMAL)
+
+    def game_over(self):
+        self.game_over_flag = True
+        self.canvas.delete("all")
+        self.canvas.create_text(200, 300, text="Game Over", fill="red", font=("Arial", 24))
+        self.canvas.create_text(200, 340, text=f"Score: {self.score}", fill="white", font=("Arial", 16))
+        self.start_button.config(state=tk.NORMAL)
+        self.buy_button.config(state=tk.DISABLED)
+        self.upgrade_button.config(state=tk.DISABLED)
+        self.skin_button.config(state=tk.DISABLED)
+
+    def open_skin_menu(self):
+        self.pause_game()
+        skin_window = tk.Toplevel(self.master)
+        skin_window.title("Выберите скин")
+
+        skins = ["Обычный", "Огненный", "Снежный", "Звёздный", "Неоновый"]
+        for skin in skins:
+            price = self.skin_prices.get(skin, 0)
+            button = tk.Button(skin_window, text=f"{skin} ({price} очков)", command=lambda s=skin: self.select_skin(s))
+            button.pack(pady=5)
+
+        close_button = tk.Button(skin_window, text="Закрыть", command=lambda: self.close_skin_menu(skin_window))
+        close_button.pack(pady=5)
+
+    def select_skin(self, skin):
+        price = self.skin_prices[skin]
+        if self.score >= price:
+            self.score -= price
+            self.current_skin_color = skin
+            self.current_skin = skin  # Сохраняем текущий скин
+
+            if skin == "Обычный":
+                self.current_skin_color = "red"
+            elif skin == "Огненный":
+                self.current_skin_color = "orange"
+            elif skin == "Снежный":
+                self.current_skin_color = "lightblue"
+            elif skin == "Звёздный":
+                self.current_skin_color = "yellow"
+            elif skin == "Неоновый":
+                self.current_skin_color = "cyan"
+
+            self.update_ball_colors()
+            self.display_score()
+            self.notification_label.config(text="")
+        else:
+            self.notification_label.config(text="Не хватает очков для покупки этого скина!")
+
+    def update_ball_colors(self):
+        for ball in self.balls:
+            self.canvas.itemconfig(ball, fill=self.current_skin_color)
+
+    def close_skin_menu(self, skin_window):
+        skin_window.destroy()
+        self.resume_game()
+
+    def pause_game(self):
+        self.game_over_flag = True
+
+    def resume_game(self):
+        self.game_over_flag = False
+        self.update()
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    game = BallGame(root)
+    root.mainloop()
