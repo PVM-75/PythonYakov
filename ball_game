@@ -6,11 +6,41 @@ class BallGame:
         self.master = master
         self.master.title("Ball Game")
 
-        self.canvas = tk.Canvas(master, width=400, height=600, bg="black")
+        self.canvas = tk.Canvas(master, width=400, height=600, bg="darkgray")
         self.canvas.pack()
 
         self.start_button = tk.Button(master, text="Start", command=self.start_game)
         self.start_button.pack()
+
+        self.button_frame_pause = tk.Frame(master)
+        self.button_frame_pause.pack()
+
+        self.Pause_button = tk.Button(self.button_frame_pause, text="Pause", command=self.pause_game)
+        self.Pause_button.pack(side=tk.LEFT, padx=10)
+        self.Pause_button.config(state=tk.DISABLED)
+
+        self.Resume_button = tk.Button(self.button_frame_pause, text="Resume", command=self.resume_game)
+        self.Resume_button.pack(side=tk.LEFT)
+        self.Resume_button.config(state=tk.DISABLED)
+
+        # Создаем фрейм для кнопок
+        self.button_frame = tk.Frame(master)
+        self.button_frame.pack(padx=5)
+
+        # Кнопка x1
+        self.button_x1 = tk.Button(self.button_frame, text="x1", command=self.x_1)
+        self.button_x1.pack(side=tk.LEFT, padx=5)
+        self.button_x1.config(state=tk.DISABLED)
+
+        # Кнопка x10
+        self.button_x10 = tk.Button(self.button_frame, text="x10", command=self.x_10)
+        self.button_x10.pack(side=tk.LEFT, padx=5)
+        self.button_x10.config(state=tk.DISABLED)
+
+        # Кнопка x100
+        self.button_x100 = tk.Button(self.button_frame, text="x100", command=self.x_100)
+        self.button_x100.pack(side=tk.LEFT, padx=5)
+        self.button_x100.config(state=tk.DISABLED)
 
         self.buy_button = tk.Button(master, text="Купить мяч (5 очков)", command=self.buy_ball)
         self.buy_button.pack()
@@ -20,6 +50,10 @@ class BallGame:
         self.upgrade_button.pack()
         self.upgrade_button.config(state=tk.DISABLED)
 
+        self.platform_button = tk.Button(master, text="Расширить платформу (100 очков)", command=self.platform_buy)
+        self.platform_button.pack()
+        self.platform_button.config(state=tk.DISABLED)
+
         self.skin_button = tk.Button(master, text="Скины", command=self.open_skin_menu)
         self.skin_button.pack()
         self.skin_button.config(state=tk.DISABLED)
@@ -27,6 +61,7 @@ class BallGame:
         self.balls = []
         self.ball_speeds = []
         self.boxes = []
+        self.box_win = []
         self.game_over_flag = False
         self.score = 0
         self.max_balls = 100
@@ -34,11 +69,13 @@ class BallGame:
         self.score_text = None
         self.ball_count_text = None
         self.touch_score_text = None
+        self.x_button_text = None
+        self.x_button = 1
         self.notification_label = tk.Label(master, text="", fg="red")
         self.notification_label.pack()
 
-        self.paddle_width = 100
-        self.paddle_height = 10
+        self.paddle_width = 80
+        self.paddle_height = 5.9
         self.points_per_touch = 1
 
         self.paddle = self.canvas.create_rectangle(150, 580, 150 + self.paddle_width, 580 + self.paddle_height, fill="blue")
@@ -66,22 +103,28 @@ class BallGame:
         self.reset_game()
         self.create_objects()
         self.display_score()
-        self.buy_button.config(state=tk.NORMAL)
         self.skin_button.config(state=tk.NORMAL)
         self.update()
 
     def reset_game(self):
-        self.score = 0
+        self.score = 100
         self.game_over_flag = False
         self.balls.clear()
         self.ball_speeds.clear()
         self.boxes.clear()
         self.canvas.delete("all")
+        self.paddle_width = 80
+        self.button_x100.config(state=tk.NORMAL)
+        self.button_x10.config(state=tk.NORMAL)
+        self.button_x1.config(state=tk.NORMAL)
+        self.Resume_button.config(state=tk.NORMAL)
+        self.Pause_button.config(state=tk.NORMAL)
         self.paddle = self.canvas.create_rectangle(150, 580, 150 + self.paddle_width, 580 + self.paddle_height, fill="blue")
 
         self.score_text = self.canvas.create_text(380, 30, text=f"Score: {self.score}", fill="white", font=("Arial", 16), anchor='e')
         self.ball_count_text = self.canvas.create_text(380, 60, text=f"Balls: {len(self.balls)}", fill="white", font=("Arial", 16), anchor='e')
         self.touch_score_text = self.canvas.create_text(380, 90, text=f"Score per touch: {self.points_per_touch}", fill="white", font=("Arial", 16), anchor='e')
+        self.x_button_text = self.canvas.create_text(380, 120, text=f"x{self.x_button}", fill="white", font=("Arial", 16), anchor='e')
 
         self.notification_label.config(text="")
 
@@ -117,10 +160,33 @@ class BallGame:
         else:
             self.buy_button.config(state=tk.NORMAL)
 
+    def x_100(self):
+        self.x_button = 100
+        self.x_button_text = 100
+
+    def x_10(self):
+        self.x_button = 10
+        self.x_button_text = 10
+
+    def x_1(self):
+        self.x_button = 1
+
+    def platform_buy(self):
+        if self.score >= 100:
+            self.score -= 100
+            self.paddle_width += 20
+            self.display_score()
+
+        if self.score < 100 or self.paddle_width >= 200:
+            self.platform_button.config(state=tk.DISABLED)
+        else:
+            self.platform_button.config(state=tk.NORMAL)
+
+
     def upgrade_paddle(self):
-        if self.score >= 10:
-            self.score -= 10
-            self.points_per_touch += 1
+        if self.score >= 10 * self.x_button:
+            self.score -= 10 * self.x_button
+            self.points_per_touch += 1 * self.x_button
             self.display_score()
 
     def move_paddle(self, event):
@@ -198,6 +264,7 @@ class BallGame:
         self.canvas.itemconfig(self.score_text, text=f"Score: {self.score}")
         self.canvas.itemconfig(self.ball_count_text, text=f"Balls: {len(self.balls)}")
         self.canvas.itemconfig(self.touch_score_text, text=f"Score per touch: {self.points_per_touch}")
+        self.canvas.itemconfig(self.x_button, text=f"x{self.x_button}")
 
         if self.score < 5 or len(self.balls) >= self.max_balls:
             self.buy_button.config(state=tk.DISABLED)
@@ -208,6 +275,11 @@ class BallGame:
             self.upgrade_button.config(state=tk.DISABLED)
         else:
             self.upgrade_button.config(state=tk.NORMAL)
+
+        if self.score < 100 or self.paddle_width >= 200:
+            self.platform_button.config(state=tk.DISABLED)
+        else:
+            self.platform_button.config(state=tk.NORMAL)
 
     def game_over(self):
         self.game_over_flag = True
@@ -267,9 +339,13 @@ class BallGame:
 
     def pause_game(self):
         self.game_over_flag = True
+        self.Resume_button.config(state=tk.NORMAL)
+        self.Pause_button.config(state=tk.DISABLED)
 
     def resume_game(self):
         self.game_over_flag = False
+        self.Resume_button.config(state=tk.DISABLED)
+        self.Pause_button.config(state=tk.NORMAL)
         self.update()
 
 if __name__ == "__main__":
