@@ -23,18 +23,6 @@ class BallGame:
         self.Resume_button.pack(side=tk.LEFT)
         self.Resume_button.config(state=tk.DISABLED)
 
-        self.button_frame = tk.Frame(master)
-        self.button_frame.pack(padx=5)
-
-        self.button_x1 = tk.Button(self.button_frame, text="x1", command=self.x_1)
-        self.button_x1.pack(side=tk.LEFT, padx=5)
-
-        self.button_x10 = tk.Button(self.button_frame, text="x10", command=self.x_10)
-        self.button_x10.pack(side=tk.LEFT, padx=5)
-
-        self.button_x100 = tk.Button(self.button_frame, text="x100", command=self.x_100)
-        self.button_x100.pack(side=tk.LEFT, padx=5)
-
         self.buy_button = tk.Button(master, text="Купить мяч (5 очков)", command=self.buy_ball)
         self.buy_button.pack()
         self.buy_button.config(state=tk.DISABLED)
@@ -61,8 +49,6 @@ class BallGame:
         self.score_text = None
         self.ball_count_text = None
         self.touch_score_text = None
-        self.x_button_text = None
-        self.x_button = 1  # Начальный множитель
         self.notification_label = tk.Label(master, text="", fg="red")
         self.notification_label.pack()
 
@@ -73,9 +59,6 @@ class BallGame:
         self.paddle = self.canvas.create_rectangle(150, 580, 150 + self.paddle_width, 580 + self.paddle_height, fill="blue")
 
         self.canvas.bind("<Motion>", self.move_paddle)
-
-        # Для счета действий, связанных с кнопками множителей
-        self.action_multiplier = 1
 
         self.current_skin_color = "red"
         self.skin_prices = {
@@ -109,10 +92,6 @@ class BallGame:
         self.boxes.clear()
         self.canvas.delete("all")
         self.paddle_width = 80
-        self.action_multiplier = 1  # Скидываем множитель действий
-        self.button_x1.config(state=tk.NORMAL)
-        self.button_x10.config(state=tk.NORMAL)
-        self.button_x100.config(state=tk.NORMAL)
 
         self.Resume_button.config(state=tk.NORMAL)
         self.Pause_button.config(state=tk.NORMAL)
@@ -121,7 +100,6 @@ class BallGame:
         self.score_text = self.canvas.create_text(380, 30, text=f"Score: {self.score}", fill="white", font=("Arial", 16), anchor='e')
         self.ball_count_text = self.canvas.create_text(380, 60, text=f"Balls: {len(self.balls)}", fill="white", font=("Arial", 16), anchor='e')
         self.touch_score_text = self.canvas.create_text(380, 90, text=f"Score per touch: {self.points_per_touch}", fill="white", font=("Arial", 16), anchor='e')
-        self.x_button_text = self.canvas.create_text(380, 120, text=f"x{self.action_multiplier}", fill="white", font=("Arial", 16), anchor='e')
 
         self.notification_label.config(text="")
 
@@ -157,26 +135,11 @@ class BallGame:
         else:
             self.buy_button.config(state=tk.NORMAL)
 
-    def x_100(self):
-        self.action_multiplier = 100
-        self.display_score()
-
-    def x_10(self):
-        self.action_multiplier = 10
-        if (self.score <= 10 * self.action_multiplier):
-            self.upgrade_button.config(state=tk.DISABLED)
-        else:
-            self.upgrade_button.config(state=tk.NORMAL)
-        self.display_score()
-
-    def x_1(self):
-        self.action_multiplier = 1
-        self.display_score()
 
     def platform_buy(self):
-        if self.score >= 100 * self.action_multiplier:
-            self.score -= 100 * self.action_multiplier
-            self.paddle_width += 20 * self.action_multiplier  # Увеличиваем ширину на множитель
+        if self.score >= 100:
+            self.score -= 100
+            self.paddle_width += 20
             self.display_score()
 
         if self.score < 100 or self.paddle_width >= 200:
@@ -185,10 +148,9 @@ class BallGame:
             self.platform_button.config(state=tk.NORMAL)
 
     def upgrade_paddle(self):
-        if self.score >= 10 * self.action_multiplier:
-        # Выполняем действие несколько раз
-            self.score -= 10 * self.action_multiplier
-            self.points_per_touch += 1 * self.action_multiplier
+        if self.score >= 10:
+            self.score -= 10
+            self.points_per_touch += 1
             self.display_score()
         else:
             self.upgrade_button.config(state=tk.DISABLED)
@@ -265,7 +227,6 @@ class BallGame:
         self.canvas.itemconfig(self.score_text, text=f"Score: {self.score}")
         self.canvas.itemconfig(self.ball_count_text, text=f"Balls: {len(self.balls)}")
         self.canvas.itemconfig(self.touch_score_text, text=f"Score per touch: {self.points_per_touch}")
-        self.canvas.itemconfig(self.x_button_text, text=f"x{self.action_multiplier}")
 
         if self.score < 5 or len(self.balls) >= self.max_balls:
             self.buy_button.config(state=tk.DISABLED)
