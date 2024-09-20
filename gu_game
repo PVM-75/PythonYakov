@@ -1,0 +1,130 @@
+import tkinter as tk
+import random
+
+class Game:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Игра с пушкой и коробками")
+        self.canvas = tk.Canvas(root, width=600, height=400, bg='lightblue')
+        self.canvas.pack()
+
+        self.bullets = []
+        self.boxes = []
+        self.score = 0  # Переменная для счета
+        self.is_game_started = False  # Флаг для проверки начала игры
+        self.is_game_paused = False  # Флаг для проверки на паузу
+
+        self.score_label = tk.Label(root, text=f"Счет: {self.score}", font=("Arial", 14))
+        self.score_label.pack()
+
+        self.start_button = tk.Button(root, text="Старт", command=self.start_game, font=("Arial", 14))
+        self.start_button.pack()
+
+        self.pause_button = tk.Button(root, text="Пауза", command=self.pause_game, font=("Arial", 14))
+        self.pause_button.pack()
+        self.pause_button.config(state=tk.DISABLED)  # Сначала кнопка паузы отключена
+
+        self.pistol_pos = 300
+        self.canvas.bind('<Motion>', self.move_pistol)
+        self.canvas.bind('<Button-1>', self.fire_bullet)
+
+    def start_game(self):
+        self.is_game_started = True  # Устанавливаем флаг, что игра началась
+        self.start_button.config(text="Рестарт")  # Меняем текст кнопки на "Рестарт"
+        self.start_button.config(command=self.restart_game)  # Меняем команду для кнопки
+        self.start_button.pack()  # Убедитесь, что кнопка видима
+        self.pause_button.config(state=tk.NORMAL)  # Включаем кнопку паузы
+        self.create_boxes()  # Создаем начальные коробки
+        self.root.after(100, self.game_loop)  # Запускаем игровой цикл
+
+    def restart_game(self):
+        self.score = 0
+        self.score_label.config(text=f"Счет: {self.score}")
+        self.boxes.clear()  # Очищаем существующие коробки
+        self.bullets.clear()  # Очищаем существующие пули
+        self.start_game()  # Запускаем игру заново
+
+    def pause_game(self):
+        if self.is_game_paused:
+            self.is_game_paused = False
+            self.pause_button.config(text="Пауза")  # Меняем текст кнопки на "Пауза"
+            self.root.after(100, self.game_loop)  # Продолжаем игровой цикл
+        else:
+            self.is_game_paused = True
+            self.pause_button.config(text="Продолжить")  # Меняем текст кнопки на "Продолжить"
+
+    def move_pistol(self, event):
+        if self.is_game_started and not self.is_game_paused:  # Проверяем, началась ли игра и не стоит ли она на паузе
+            self.pistol_pos = min(max(event.x, 15), 585)  # Ограничиваем позицию пушки
+            self.redraw_pistol()
+
+    def redraw_pistol(self):
+        self.canvas.delete('pistol')
+        self.canvas.create_polygon(self.pistol_pos - 15, 380,
+                                    self.pistol_pos + 15, 380,
+                                    self.pistol_pos, 360,
+                                    fill='green', tags='pistol')
+
+    def fire_bullet(self, event):
+        if self.is_game_started and not self.is_game_paused:  # Проверяем, началась ли игра и не на паузе
+            bullet = self.canvas.create_line(self.pistol_pos, 360, self.pistol_pos, 340, fill='red', tags='bullet')
+            self.bullets.append(bullet)
+
+    def create_boxes(self):
+        # Создаем 3 коробки за раз, если их меньше 3
+        current_boxes = len(self.boxes)
+        if current_boxes < 3:
+            for _ in range(3 - current_boxes):
+                x = random.randint(0, 550)
+                box = self.canvas.create_rectangle(x, 0, x + 50, 50, fill='brown', tags='box')
+                self.boxes.append({'id': box, 'hits': 0})
+
+    def update_boxes(self):
+        for box in self.boxes[:]:
+            self.canvas.move(box['id'], 0, 5)  # Двигаем коробку вниз
+            if self.canvas.coords(box['id'])[1] > 400:  # Проверяем, вышла ли коробка за пределы
+                self.canvas.delete(box['id'])
+                self.boxes.remove(box)  # Удаляем коробку, если она вышла за пределы
+
+    def move_bullets(self):
+        for bullet in self.bullets[:]:
+            self.canvas.move(bullet, 0, -10)  # Двигаем пулю вверх
+            if self.canvas.coords(bullet)[1] < 0:  # Удаляем пулю, если она вышла за пределы
+                self.canvas.delete(bullet)
+                self.bullets.remove(bullet)
+
+    def check_bullet_hit(self):
+        for bullet in self.bullets[:]:
+            coords = self.canvas.coords(bullet)
+            for box in self.boxes[:]:
+                box_coords = self.canvas.coords(box['id'])
+                if box_coords and box_coords[0] < coords[0] < box_coords[2] and box_coords[1] < coords[1] < box_coords[3]:
+                    self.canvas.delete(bullet)  # Удаляем пулю при попадании
+                    self.bullets.remove(bullet)
+                    box['hits'] += 1
+                    if box['hits'] >= 2:  # Если два попадания, удаляем коробку
+                        self.canvas.delete(box['id'])
+                        self.boxes.remove(box)  # Удаляем коробку
+                        self.score += 1  # Увеличиваем счет на 1
+                        self.update_score()  # Обновляем отображение счета
+                    return  # Обработка только одного попадания за раз
+
+    def update_score(self):
+        self.score_label.config(text=f"Счет: {self.score}")
+
+    def game_loop(self):
+        if self.is_game_started and not self.is_game_paused:  # Проверяем, началась ли игра и не стоит ли она на паузе
+            self.move_bullets()  # Обновляем положение пуль
+            self.update_boxes()  # Обновляем положение коробок
+            self.check_bullet_hit()  # Проверяем попадания
+
+            # Создаем новые коробки, если их нет
+            if not self.boxes:
+                self.create_boxes()
+
+            self.root.after(100, self.game_loop)  # Повторяем цикл
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    game = Game(root)
+    root.mainloop()
