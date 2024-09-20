@@ -76,14 +76,25 @@ class Game:
         if current_boxes < 3:
             for _ in range(3 - current_boxes):
                 x = random.randint(0, 550)
-                box = self.canvas.create_rectangle(x, 0, x + 50, 50, fill='brown', tags='box')
-                self.boxes.append({'id': box, 'hits': 0})
+                # Вероятность создания коробки с 3 HP (например, 20% шанс)
+                if random.random() < 0.2:
+                    hp = 3
+                    color = 'orange'  # Оранжевый цвет для коробок с 3 HP
+                else:
+                    hp = 2
+                    color = 'brown'  # Коричневый цвет для коробок с 2 HP
+
+                box = self.canvas.create_rectangle(x, 0, x + 50, 50, fill=color, tags='box')
+                hp_text = self.canvas.create_text(x + 25, 40, text=f'HP: {hp}', tags='hp')
+                self.boxes.append({'id': box, 'hits': 0, 'hp_text': hp_text, 'hp': hp})
 
     def update_boxes(self):
         for box in self.boxes[:]:
             self.canvas.move(box['id'], 0, 5)  # Двигаем коробку вниз
+            self.canvas.move(box['hp_text'], 0, 5)  # Двигаем текст HP вместе с коробкой
             if self.canvas.coords(box['id'])[1] > 400:  # Проверяем, вышла ли коробка за пределы
                 self.canvas.delete(box['id'])
+                self.canvas.delete(box['hp_text'])  # Удаляем текст HP
                 self.boxes.remove(box)  # Удаляем коробку, если она вышла за пределы
 
     def move_bullets(self):
@@ -101,12 +112,23 @@ class Game:
                 if box_coords and box_coords[0] < coords[0] < box_coords[2] and box_coords[1] < coords[1] < box_coords[3]:
                     self.canvas.delete(bullet)  # Удаляем пулю при попадании
                     self.bullets.remove(bullet)
-                    box['hits'] += 1
-                    if box['hits'] >= 2:  # Если два попадания, удаляем коробку
-                        self.canvas.delete(box['id'])
+                    box['hits'] += 1  # Увеличиваем количество попаданий
+                    # Проверка на удаление коробки
+                    if box['hp'] == 3 and box['hits'] >= 3:  # Если 3 попадания, удаляем коробку с 3 HP
+                        self.canvas.delete(box['id'])  # Удаляем коробку
+                        self.canvas.delete(box['hp_text'])  # Удаляем текст HP
                         self.boxes.remove(box)  # Удаляем коробку
                         self.score += 1  # Увеличиваем счет на 1
                         self.update_score()  # Обновляем отображение счета
+                    elif box['hp'] == 2 and box['hits'] >= 2:  # Если 2 попадания, удаляем коробку с 2 HP
+                        self.canvas.delete(box['id'])  # Удаляем коробку
+                        self.canvas.delete(box['hp_text'])  # Удаляем текст HP
+                        self.boxes.remove(box)  # Удаляем коробку
+                        self.score += 1  # Увеличиваем счет на 1
+                        self.update_score()  # Обновляем отображение счета
+                    else:
+                        # Обновляем текст HP
+                        self.canvas.itemconfig(box['hp_text'], text=f'HP: {box["hp"] - box["hits"]}')
                     return  # Обработка только одного попадания за раз
 
     def update_score(self):
