@@ -12,7 +12,7 @@ class Game:
         self.boxes = []
         self.ammo_drops = []  # Список для патронов, падающих с неба
         self.score = 0  # Переменная для счета
-        self.max_ammo = 128  # Максимальное количество патронов
+        self.max_ammo = 32  # Максимальное количество патронов
         self.current_ammo = self.max_ammo  # Текущее количество патронов (изначально)
         self.is_game_started = False  # Флаг для проверки начала игры
         self.is_game_paused = False  # Флаг для проверки на паузу
@@ -21,6 +21,7 @@ class Game:
         self.ammo_spawn_delay = 15000  # Задержка на спавн патронов (15 секунд в миллисекундах)
         self.ammo_collected = 0  # Счетчик собранных патронов
         self.ammo_spawn_timer = None  # Таймер для спавна патронов
+        self.double_shot = False  # Флаг для проверки необходимости двойного выстрела
 
         self.score_label = tk.Label(root, text=f"Счет: {self.score}", font=("Arial", 14))
         self.score_label.pack(side=tk.LEFT)
@@ -35,9 +36,34 @@ class Game:
         self.pause_button.pack()
         self.pause_button.config(state=tk.DISABLED)  # Сначала кнопка паузы отключена
 
+        # Добавляем кнопку для покупки патронов
+        self.buy_ammo_button = tk.Button(root, text="Купить 5 патронов (2 очка)",
+                                          command=self.buy_ammo, font=("Arial", 14))
+        self.buy_ammo_button.pack()
+
+        # Добавляем кнопку для улучшения пушки
+        self.upgrade_gun_button = tk.Button(root, text="Улучшить пушку (50 очков)",
+                                             command=self.upgrade_gun, font=("Arial", 14))
+        self.upgrade_gun_button.pack()
+
         self.pistol_pos = 300
         self.canvas.bind('<Motion>', self.move_pistol)
         self.canvas.bind('<Button-1>', self.fire_bullet)
+
+    def buy_ammo(self):
+        if self.score >= 2:  # Проверяем, достаточно ли очков
+            self.score -= 2  # Уменьшаем счет на 2 очка
+            self.current_ammo += 5  # Добавляем 5 патронов
+            if self.current_ammo > self.max_ammo:
+                self.current_ammo = self.max_ammo  # Ограничиваем максимум патронов
+            self.score_label.config(text=f"Счет: {self.score}")
+            self.ammo_label.config(text=f"Патроны: {self.current_ammo}/{self.max_ammo}")
+
+    def upgrade_gun(self):
+        if self.score >= 50:  # Проверяем, достаточно ли очков
+            self.score -= 50  # Уменьшаем счет на 50 очков
+            self.double_shot = True  # Устанавливаем флаг двойного выстрела
+            self.score_label.config(text=f"Счет: {self.score}")  # Обновляем отображение счета
 
     def start_game(self):
         self.is_game_started = True  # Устанавливаем флаг, что игра началась
@@ -64,6 +90,7 @@ class Game:
         self.bullets.clear()  # Очищаем существующие пули
         self.ammo_collected = 0  # Сбрасываем собранные патроны
         self.ammo_spawn_timer = None  # Обнуляем таймер
+        self.double_shot = False  # Сбрасываем флаг двойного выстрела
         self.start_game()  # Запускаем игру заново
 
     def pause_game(self):
@@ -92,6 +119,7 @@ class Game:
             bullet = self.canvas.create_line(self.pistol_pos, 360, self.pistol_pos, 340, fill='red', tags='bullet')
             self.bullets.append(bullet)
             self.current_ammo -= 1  # Уменьшаем количество патронов
+
             self.ammo_label.config(text=f"Патроны: {self.current_ammo}/{self.max_ammo}")  # Обновляем отображение патронов
 
     def create_boxes(self):
@@ -172,13 +200,15 @@ class Game:
                     self.bullets.remove(bullet)
                     box['hits'] += 1  # Увеличиваем количество попаданий
                     # Проверка на удаление коробки
-                    if box['hp'] == 3 and box['hits'] >= 3:  # Если 3 попадания, удаляем коробку с 3 HP
+                    if (self.double_shot and box['hp'] == 3 and box['hits'] >= 2) or (not self.double_shot and box['hp'] == 3 and box['hits'] >= 3):
+                        # Если 2 попадания, удаляем коробку с 3 HP
                         self.canvas.delete(box['id'])  # Удаляем коробку
                         self.canvas.delete(box['hp_text'])  # Удаляем текст HP
                         self.boxes.remove(box)  # Удаляем коробку
                         self.score += 1  # Увеличиваем счет на 1
                         self.update_score()  # Обновляем отображение счета
-                    elif box['hp'] == 2 and box['hits'] >= 2:  # Если 2 попадания, удаляем коробку с 2 HP
+                    elif (self.double_shot and box['hp'] == 2 and box['hits'] >= 1) or (not self.double_shot and box['hp'] == 2 and box['hits'] >= 2):
+                        # Если 1 попадание, удаляем коробку с 2 HP
                         self.canvas.delete(box['id'])  # Удаляем коробку
                         self.canvas.delete(box['hp_text'])  # Удаляем текст HP
                         self.boxes.remove(box)  # Удаляем коробку
