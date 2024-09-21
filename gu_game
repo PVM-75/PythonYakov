@@ -10,12 +10,23 @@ class Game:
 
         self.bullets = []
         self.boxes = []
+        self.ammo_drops = []  # Список для патронов, падающих с неба
         self.score = 0  # Переменная для счета
+        self.max_ammo = 128  # Максимальное количество патронов
+        self.current_ammo = self.max_ammo  # Текущее количество патронов (изначально)
         self.is_game_started = False  # Флаг для проверки начала игры
         self.is_game_paused = False  # Флаг для проверки на паузу
+        self.box_fall_speed = 5  # Скорость падения коробок
+        self.ammo_fall_speed = 3  # Скорость падения патронов
+        self.ammo_spawn_delay = 15000  # Задержка на спавн патронов (15 секунд в миллисекундах)
+        self.ammo_collected = 0  # Счетчик собранных патронов
+        self.ammo_spawn_timer = None  # Таймер для спавна патронов
 
         self.score_label = tk.Label(root, text=f"Счет: {self.score}", font=("Arial", 14))
-        self.score_label.pack()
+        self.score_label.pack(side=tk.LEFT)
+
+        self.ammo_label = tk.Label(root, text=f"Патроны: {self.current_ammo}/{self.max_ammo}", font=("Arial", 14))
+        self.ammo_label.pack(side=tk.RIGHT)
 
         self.start_button = tk.Button(root, text="Старт", command=self.start_game, font=("Arial", 14))
         self.start_button.pack()
@@ -32,16 +43,27 @@ class Game:
         self.is_game_started = True  # Устанавливаем флаг, что игра началась
         self.start_button.config(text="Рестарт")  # Меняем текст кнопки на "Рестарт"
         self.start_button.config(command=self.restart_game)  # Меняем команду для кнопки
-        self.start_button.pack()  # Убедитесь, что кнопка видима
         self.pause_button.config(state=tk.NORMAL)  # Включаем кнопку паузы
         self.create_boxes()  # Создаем начальные коробки
         self.root.after(100, self.game_loop)  # Запускаем игровой цикл
 
     def restart_game(self):
+        for box in self.boxes:
+            self.canvas.delete(box['id'])  # Удаляем коробки с экрана
+            self.canvas.delete(box['hp_text'])  # Удаляем текст HP с экрана
+        self.boxes.clear()  # Очищаем список коробок
+        for ammo in self.ammo_drops:
+            self.canvas.delete(ammo)  # Удаляем патроны с экрана
+        self.ammo_drops.clear()  # Очищаем список патронов
+
+        # Сбрасываем состояние игры
         self.score = 0
         self.score_label.config(text=f"Счет: {self.score}")
-        self.boxes.clear()  # Очищаем существующие коробки
+        self.current_ammo = self.max_ammo  # Сбрасываем патроны
+        self.ammo_label.config(text=f"Патроны: {self.current_ammo}/{self.max_ammo}")  # Обновляем отображение патронов
         self.bullets.clear()  # Очищаем существующие пули
+        self.ammo_collected = 0  # Сбрасываем собранные патроны
+        self.ammo_spawn_timer = None  # Обнуляем таймер
         self.start_game()  # Запускаем игру заново
 
     def pause_game(self):
@@ -66,9 +88,11 @@ class Game:
                                     fill='green', tags='pistol')
 
     def fire_bullet(self, event):
-        if self.is_game_started and not self.is_game_paused:  # Проверяем, началась ли игра и не на паузе
+        if self.is_game_started and not self.is_game_paused and self.current_ammo > 0:  # Проверяем, началась ли игра, не на паузе, и есть ли патроны
             bullet = self.canvas.create_line(self.pistol_pos, 360, self.pistol_pos, 340, fill='red', tags='bullet')
             self.bullets.append(bullet)
+            self.current_ammo -= 1  # Уменьшаем количество патронов
+            self.ammo_label.config(text=f"Патроны: {self.current_ammo}/{self.max_ammo}")  # Обновляем отображение патронов
 
     def create_boxes(self):
         # Создаем 3 коробки за раз, если их меньше 3
@@ -88,14 +112,48 @@ class Game:
                 hp_text = self.canvas.create_text(x + 25, 40, text=f'HP: {hp}', tags='hp')
                 self.boxes.append({'id': box, 'hits': 0, 'hp_text': hp_text, 'hp': hp})
 
+    def create_ammo_drop(self):
+        if len(self.ammo_drops) < 2:  # Проверяем на максимум патронов на поле
+            x = random.randint(0, 550)
+            ammo_drop = self.canvas.create_oval(x, 0, x + 20, 20, fill='yellow', tags='ammo')
+            self.ammo_drops.append(ammo_drop)
+
     def update_boxes(self):
         for box in self.boxes[:]:
-            self.canvas.move(box['id'], 0, 5)  # Двигаем коробку вниз
-            self.canvas.move(box['hp_text'], 0, 5)  # Двигаем текст HP вместе с коробкой
+            self.canvas.move(box['id'], 0, self.box_fall_speed)  # Двигаем коробку вниз
+            self.canvas.move(box['hp_text'], 0, self.box_fall_speed)  # Двигаем текст HP вместе с коробкой
             if self.canvas.coords(box['id'])[1] > 400:  # Проверяем, вышла ли коробка за пределы
                 self.canvas.delete(box['id'])
                 self.canvas.delete(box['hp_text'])  # Удаляем текст HP
                 self.boxes.remove(box)  # Удаляем коробку, если она вышла за пределы
+
+    def update_ammo_drops(self):
+        for ammo in self.ammo_drops[:]:
+            self.canvas.move(ammo, 0, self.ammo_fall_speed)  # Двигаем патрон вниз
+            if self.canvas.coords(ammo)[1] > 400:  # Проверяем, ушёл ли патрон за пределы
+                self.canvas.delete(ammo)  # Удаляем патрон
+                self.ammo_drops.remove(ammo)  # Удаляем из списка
+
+    def check_ammo_touch(self):
+        for ammo in self.ammo_drops[:]:
+            coords = self.canvas.coords(ammo)
+            if coords:
+                if self.canvas.coords('pistol')[0] < coords[0] < self.canvas.coords('pistol')[2] and coords[1] > 360:  # Проверяем столкновение с пушкой
+                    self.ammo_collected += 1  # Увеличиваем счетчик собранных патронов
+                    self.current_ammo += 5  # Добавляем 5 патронов
+                    if self.current_ammo > self.max_ammo:
+                        self.current_ammo = self.max_ammo  # Нельзя превышать максимум
+                    self.ammo_label.config(text=f"Патроны: {self.current_ammo}/{self.max_ammo}")  # Обновляем отображение патронов
+                    self.canvas.delete(ammo)  # Удаляем патрон
+                    self.ammo_drops.remove(ammo)  # Удаляем патрон из списка
+                    if self.ammo_collected >= 2:  # Если собрали 2 патрона
+                        self.start_ammo_spawn_timer()  # Запускаем таймер
+                    return  # Обработка только одного касания за раз
+
+    def start_ammo_spawn_timer(self):
+        if self.ammo_spawn_timer:
+            self.root.after_cancel(self.ammo_spawn_timer)  # Сбрасываем предыдущий таймер
+        self.ammo_spawn_timer = self.root.after(self.ammo_spawn_delay, self.create_ammo_drop)  # Устанавливаем новый таймер
 
     def move_bullets(self):
         for bullet in self.bullets[:]:
@@ -138,7 +196,9 @@ class Game:
         if self.is_game_started and not self.is_game_paused:  # Проверяем, началась ли игра и не стоит ли она на паузе
             self.move_bullets()  # Обновляем положение пуль
             self.update_boxes()  # Обновляем положение коробок
+            self.update_ammo_drops()  # Обновляем положение патронов
             self.check_bullet_hit()  # Проверяем попадания
+            self.check_ammo_touch()  # Проверяем касания с патронами
 
             # Создаем новые коробки, если их нет
             if not self.boxes:
