@@ -22,6 +22,11 @@ class Game:
         self.ammo_collected = 0  # Счетчик собранных патронов
         self.ammo_spawn_timer = None  # Таймер для спавна патронов
         self.double_shot = False  # Флаг для проверки необходимости двойного выстрела
+        self.upgrade_level = 0  # Уровень улучшения пушки
+
+        # Начальная позиция пушки
+        self.pistol_pos = 300
+        self.pistol_pos_y = 360
 
         self.score_label = tk.Label(root, text=f"Счет: {self.score}", font=("Arial", 14))
         self.score_label.pack(side=tk.LEFT)
@@ -42,11 +47,10 @@ class Game:
         self.buy_ammo_button.pack()
 
         # Добавляем кнопку для улучшения пушки
-        self.upgrade_gun_button = tk.Button(root, text="Улучшить пушку (50 очков)",
+        self.upgrade_gun_button = tk.Button(root, text="Улучшить пушку (50)",
                                              command=self.upgrade_gun, font=("Arial", 14))
         self.upgrade_gun_button.pack()
 
-        self.pistol_pos = 300
         self.canvas.bind('<Motion>', self.move_pistol)
         self.canvas.bind('<Button-1>', self.fire_bullet)
 
@@ -59,11 +63,34 @@ class Game:
             self.score_label.config(text=f"Счет: {self.score}")
             self.ammo_label.config(text=f"Патроны: {self.current_ammo}/{self.max_ammo}")
 
+    def update_upgrade_button_text(self):
+        if self.upgrade_level == 0:
+            self.upgrade_gun_button.config(text="Улучшить пушку (50)")
+        elif self.upgrade_level == 1:
+            self.upgrade_gun_button.config(text="Улучшить пушку (200)")
+        elif self.upgrade_level == 2:
+            self.upgrade_gun_button.config(text="Максимальное улучшение")
+
     def upgrade_gun(self):
-        if self.score >= 50:  # Проверяем, достаточно ли очков
-            self.score -= 50  # Уменьшаем счет на 50 очков
+        if self.score >= 200 and self.upgrade_level == 1:  # Проверяем, достаточно ли очков и уровень улучшения 1
+            self.score -= 200  # Уменьшаем счет на 200 очков
+            self.upgrade_level = 2  # Устанавливаем уровень улучшения на 2
             self.double_shot = True  # Устанавливаем флаг двойного выстрела
             self.score_label.config(text=f"Счет: {self.score}")  # Обновляем отображение счета
+            print("Пушка улучшена до уровня 2!")  # Сообщение в консоли (для отладки)
+
+        elif self.score >= 50 and self.upgrade_level == 0:  # Проверяем первое улучшение
+            self.score -= 50  # Уменьшаем счет на 50 очков
+            self.upgrade_level = 1  # Устанавливаем уровень улучшения на 1
+            self.double_shot = True  # Устанавливаем флаг двойного выстрела
+            self.score_label.config(text=f"Счет: {self.score}")  # Обновляем отображение счета
+            print("Пушка улучшена до уровня 1!")  # Сообщение в консоли (для отладки)
+
+        else:
+            print("Недостаточно очков для улучшения пушки.")  # Сообщение в консоли, если недостаточно очков
+
+        # Обновляем текст кнопки после возможного улучшения
+        self.update_upgrade_button_text()
 
     def start_game(self):
         self.is_game_started = True  # Устанавливаем флаг, что игра началась
@@ -83,7 +110,7 @@ class Game:
         self.ammo_drops.clear()  # Очищаем список патронов
 
         # Сбрасываем состояние игры
-        self.score = 0
+        self.score = 600
         self.score_label.config(text=f"Счет: {self.score}")
         self.current_ammo = self.max_ammo  # Сбрасываем патроны
         self.ammo_label.config(text=f"Патроны: {self.current_ammo}/{self.max_ammo}")  # Обновляем отображение патронов
@@ -91,6 +118,8 @@ class Game:
         self.ammo_collected = 0  # Сбрасываем собранные патроны
         self.ammo_spawn_timer = None  # Обнуляем таймер
         self.double_shot = False  # Сбрасываем флаг двойного выстрела
+        self.upgrade_level = 0  # Сбрасываем уровень улучшения
+        self.update_upgrade_button_text()  # Обновляем текст кнопки улучшения
         self.start_game()  # Запускаем игру заново
 
     def pause_game(self):
@@ -109,18 +138,36 @@ class Game:
 
     def redraw_pistol(self):
         self.canvas.delete('pistol')
-        self.canvas.create_polygon(self.pistol_pos - 15, 380,
-                                    self.pistol_pos + 15, 380,
-                                    self.pistol_pos, 360,
-                                    fill='green', tags='pistol')
+        self.canvas.create_polygon(self.pistol_pos - 15, self.pistol_pos_y,
+                                   self.pistol_pos + 15, self.pistol_pos_y,
+                                   self.pistol_pos, self.pistol_pos_y - 20,
+                                   fill='green', tags='pistol')
 
     def fire_bullet(self, event):
         if self.is_game_started and not self.is_game_paused and self.current_ammo > 0:  # Проверяем, началась ли игра, не на паузе, и есть ли патроны
-            bullet = self.canvas.create_line(self.pistol_pos, 360, self.pistol_pos, 340, fill='red', tags='bullet')
+            bullet = self.canvas.create_line(self.pistol_pos, self.pistol_pos_y, self.pistol_pos,
+                                             self.pistol_pos_y - 20, fill='red', tags='bullet')
             self.bullets.append(bullet)
             self.current_ammo -= 1  # Уменьшаем количество патронов
 
-            self.ammo_label.config(text=f"Патроны: {self.current_ammo}/{self.max_ammo}")  # Обновляем отображение патронов
+            self.ammo_label.config(
+                text=f"Патроны: {self.current_ammo}/{self.max_ammo}")  # Обновляем отображение патронов
+
+            # Добавление эффекта отдачи
+            self.recoil_down(10)  # 10 пикселей вниз при отдаче
+
+    def recoil_down(self, distance):
+        # Смещаем пушку на distance пикселей вниз
+        self.pistol_pos_y += distance  # Изменяем Y-координату
+        self.redraw_pistol()
+
+        # Возвращаем пушку обратно через 100 мс
+        self.root.after(100, lambda: self.reset_recoil(distance))
+
+    def reset_recoil(self, distance):
+        # Возвращаем пушку на исходную позицию
+        self.pistol_pos_y = 360  # Возвращаем обратно на исходное положение
+        self.redraw_pistol()
 
     def create_boxes(self):
         # Создаем 3 коробки за раз, если их меньше 3
@@ -166,12 +213,13 @@ class Game:
         for ammo in self.ammo_drops[:]:
             coords = self.canvas.coords(ammo)
             if coords:
-                if self.canvas.coords('pistol')[0] < coords[0] < self.canvas.coords('pistol')[2] and coords[1] > 360:  # Проверяем столкновение с пушкой
+                if self.canvas.coords('pistol')[0] < coords[0] < self.canvas.coords('pistol')[2] and coords[1] > self.pistol_pos_y:  # Проверяем столкновение с пушкой
                     self.ammo_collected += 1  # Увеличиваем счетчик собранных патронов
                     self.current_ammo += 5  # Добавляем 5 патронов
                     if self.current_ammo > self.max_ammo:
                         self.current_ammo = self.max_ammo  # Нельзя превышать максимум
-                    self.ammo_label.config(text=f"Патроны: {self.current_ammo}/{self.max_ammo}")  # Обновляем отображение патронов
+                    self.ammo_label.config(
+                        text=f"Патроны: {self.current_ammo}/{self.max_ammo}")  # Обновляем отображение патронов
                     self.canvas.delete(ammo)  # Удаляем патрон
                     self.ammo_drops.remove(ammo)  # Удаляем патрон из списка
                     if self.ammo_collected >= 2:  # Если собрали 2 патрона
@@ -195,20 +243,20 @@ class Game:
             coords = self.canvas.coords(bullet)
             for box in self.boxes[:]:
                 box_coords = self.canvas.coords(box['id'])
+                damage = 1  # Базовый урон
+
+                if self.upgrade_level == 1:  # Первое улучшение
+                    damage = 2  # Урон при первом улучшении
+                elif self.upgrade_level == 2:  # Второе улучшение
+                    damage = 3  # Урон при втором улучшении
+
                 if box_coords and box_coords[0] < coords[0] < box_coords[2] and box_coords[1] < coords[1] < box_coords[3]:
                     self.canvas.delete(bullet)  # Удаляем пулю при попадании
                     self.bullets.remove(bullet)
-                    box['hits'] += 1  # Увеличиваем количество попаданий
+                    box['hits'] += damage  # Наносим урон коробке
+
                     # Проверка на удаление коробки
-                    if (self.double_shot and box['hp'] == 3 and box['hits'] >= 2) or (not self.double_shot and box['hp'] == 3 and box['hits'] >= 3):
-                        # Если 2 попадания, удаляем коробку с 3 HP
-                        self.canvas.delete(box['id'])  # Удаляем коробку
-                        self.canvas.delete(box['hp_text'])  # Удаляем текст HP
-                        self.boxes.remove(box)  # Удаляем коробку
-                        self.score += 1  # Увеличиваем счет на 1
-                        self.update_score()  # Обновляем отображение счета
-                    elif (self.double_shot and box['hp'] == 2 and box['hits'] >= 1) or (not self.double_shot and box['hp'] == 2 and box['hits'] >= 2):
-                        # Если 1 попадание, удаляем коробку с 2 HP
+                    if box['hits'] >= box['hp']:  # Если попаданий больше или равно HP
                         self.canvas.delete(box['id'])  # Удаляем коробку
                         self.canvas.delete(box['hp_text'])  # Удаляем текст HP
                         self.boxes.remove(box)  # Удаляем коробку
