@@ -1,0 +1,110 @@
+import tkinter as tk
+from tkinter import messagebox, simpledialog
+
+class Calc:
+    def __init__(self, master):
+        self.master = master
+        self.master.title("Кальк")
+
+        self.canvas = tk.Canvas(master, width=350, height=300, bg="white")
+        self.canvas.pack()
+
+        self.num_1 = '2'
+        self.num_2 = ''
+        self.num_1_text = self.canvas.create_text(330, 270, text=f"{self.num_1}", fill="black", font=("Arial", 28), anchor='e')
+
+        self.button_frame_1 = tk.Frame(master)
+        self.button_frame_1.pack()
+
+        self.history_button = tk.Button(self.button_frame_1, text="H", width=7, height=3)
+        self.history_button.pack(side=tk.LEFT, padx=10)
+
+        self.C_button = tk.Button(self.button_frame_1, text="C", width=7, height=3)
+        self.C_button.pack(side=tk.LEFT, padx=10)
+
+        self.backspace_button = tk.Button(self.button_frame_1, text="←", width=7, height=3)
+        self.backspace_button.pack(side=tk.LEFT, padx=10)
+
+        self.divide_button = tk.Button(self.button_frame_1, text="/", width=7, height=3)
+        self.divide_button.pack(side=tk.LEFT, padx=10)
+
+        self.button_frame_2 = tk.Frame(master)
+        self.button_frame_2.pack(pady=10)
+
+        self.one_button = tk.Button(self.button_frame_2, text="1", width=7, height=3, command=self.one_command)
+        self.one_button.pack(side=tk.LEFT, padx=10)
+
+        self.two_button = tk.Button(self.button_frame_2, text="2", width=7, height=3)
+        self.two_button.pack(side=tk.LEFT, padx=10)
+
+        self.three_button = tk.Button(self.button_frame_2, text="3", width=7, height=3)
+        self.three_button.pack(side=tk.LEFT, padx=10)
+
+        self.multiply_button = tk.Button(self.button_frame_2, text="*", width=7, height=3)
+        self.multiply_button.pack(side=tk.LEFT, padx=10)
+
+        self.button_frame_3 = tk.Frame(master)
+        self.button_frame_3.pack()
+
+        self.four_button = tk.Button(self.button_frame_3, text="4", width=7, height=3)
+        self.four_button.pack(side=tk.LEFT, padx=10)
+
+        self.five_button = tk.Button(self.button_frame_3, text="5", width=7, height=3)
+        self.five_button.pack(side=tk.LEFT, padx=10)
+
+        self.six_button = tk.Button(self.button_frame_3, text="6", width=7, height=3)
+        self.six_button.pack(side=tk.LEFT, padx=10)
+
+        self.minus_button = tk.Button(self.button_frame_3, text="-", width=7, height=3)
+        self.minus_button.pack(side=tk.LEFT, padx=10)
+
+        self.button_frame_4 = tk.Frame(master)
+        self.button_frame_4.pack(pady=10)
+
+        self.seven_button = tk.Button(self.button_frame_4, text="7", width=7, height=3)
+        self.seven_button.pack(side=tk.LEFT, padx=10)
+
+        self.eight_button = tk.Button(self.button_frame_4, text="8", width=7, height=3)
+        self.eight_button.pack(side=tk.LEFT, padx=10)
+
+        self.nine_button = tk.Button(self.button_frame_4, text="9", width=7, height=3)
+        self.nine_button.pack(side=tk.LEFT, padx=10)
+
+        self.plus_button = tk.Button(self.button_frame_4, text="+", width=7, height=3)
+        self.plus_button.pack(side=tk.LEFT, padx=10)
+
+        self.button_frame_5 = tk.Frame(master)
+        self.button_frame_5.pack()
+
+        self.plus_minus_button = tk.Button(self.button_frame_5, text="+/-", width=7, height=3)
+        self.plus_minus_button.pack(side=tk.LEFT, padx=10)
+
+        self.zero_button = tk.Button(self.button_frame_5, text="0", width=7, height=3)
+        self.zero_button.pack(side=tk.LEFT, padx=10)
+
+        self.dot_button = tk.Button(self.button_frame_5, text=".", width=7, height=3)
+        self.dot_button.pack(side=tk.LEFT, padx=10)
+
+        self.ravno_button = tk.Button(self.button_frame_5, text="=", width=7, height=3)
+        self.ravno_button.pack(side=tk.LEFT, padx=10)
+
+    def one_command(self):
+        if self.num_1 == '0':
+            self.num_1 = '1'
+            self.update()
+            self.display()
+        else:
+            str(self.num_1) + '1'
+            self.update()
+            self.display()
+
+    def update(self):
+        self.master.after(20, self.update)
+
+    def display(self):
+        self.canvas.itemconfig(self.num_1_text, text=f"{self.num_1}")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = Calc(root)
+    root.mainloop()
