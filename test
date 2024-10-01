@@ -1,0 +1,52 @@
+import tkinter as tk
+
+class SimpleCalculator:
+    def __init__(self, master):
+        self.master = master
+        self.master.title("Простой калькулятор")
+
+        self.input_var = tk.StringVar()
+
+        self.input_frame = tk.Entry(master, textvariable=self.input_var, width=16, font=('Arial', 24), justify='right')
+        self.input_frame.grid(row=0, column=0, columnspan=4)
+
+        # Кнопки
+        self.create_buttons()
+
+    def create_buttons(self):
+        # Кнопка 1
+        btn1 = tk.Button(self.master, text="1", padx=20, pady=20, command=lambda: self.append_to_input('1'))
+        btn1.grid(row=1, column=0)
+
+        # Кнопка 2
+        btn2 = tk.Button(self.master, text="2", padx=20, pady=20, command=lambda: self.append_to_input('2'))
+        btn2.grid(row=1, column=1)
+
+        # Кнопка +
+        btn_plus = tk.Button(self.master, text="+", padx=20, pady=20, command=lambda: self.append_to_input('+'))
+        btn_plus.grid(row=1, column=2)
+
+        # Кнопка -
+        btn_minus = tk.Button(self.master, text="-", padx=20, pady=20, command=lambda: self.append_to_input('-'))
+        btn_minus.grid(row=1, column=3)
+
+        # Кнопка "=" для вычисления результата
+        btn_equals = tk.Button(self.master, text="=", padx=20, pady=20, command=self.calculate_result)
+        btn_equals.grid(row=2, column=0, columnspan=4)
+
+    def append_to_input(self, value):
+        current_input = self.input_var.get()
+        new_input = current_input + str(value)
+        self.input_var.set(new_input)
+
+    def calculate_result(self):
+        try:
+            result = eval(self.input_var.get())
+            self.input_var.set(result)
+        except Exception as e:
+            self.input_var.set("Error")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    calculator = SimpleCalculator(root)
+    root.mainloop()
